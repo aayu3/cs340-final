@@ -230,8 +230,6 @@ def test_use_paper(aiohttp_client):
 def test_hosted_item(aiohttp_client):
   with playwrapper() as c:
     c1 = c.command('go','north')
-    print(c1)
-    print("r5.search(c1) this is r5: " + str(r5))
     m = r5.search(c1)
     print("m :" + str(m))
     assert m is not None, "depth=0 item in classroom"

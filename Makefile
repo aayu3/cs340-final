@@ -12,4 +12,4 @@ stop:
 
 
 test:
-	echo 'There are no automated test (yet); try `make start` instead.'
+	python3 -m pytest
