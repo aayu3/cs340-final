@@ -26,44 +26,20 @@ mode = "setup" # {"setup", "play", "locked"}
 
 
 ##########################################################
-###    Section: dummy state to simulate multiple domains ###
+###  Section: dummy state to simulate multiple domains ###
 
-other_domains = [
-    { "loot": {
-            'name':'i-card',
-            'description':"A University ID card. The name is smudged, but you recognize the face; this is the person who came from IT to fix the classroom computer when it broke down.",
-            'verb':{'read':"The text is smudged and you don't know how to read bar codes or magnetic stripes."},
-            'depth':0,
-            'home':-1,
-        },
-        "messages": [
-            "You journey in other domains, but find nothing of interest except a locked door with a card swipe next to it. You then return from whence you came.",
-            "You journey in other domains. After several adventures you use the ID card to open a locked door, behind which you find a {}. You then return from whence you came.",
-            "You journey in other domains, but don't find anything of note so you return from whence you came.",
-        ]
-    },
-    { "loot": {
-            'name':'axe',
-            'description':"An axe, colored like those used by firefighters to break through burning walls.",
-            'verb':{'use':"An axe like this could do some serious damage. Best not to use it anywhere on campus."},
-            'depth':0,
-            'home':-1,
-        },
-        "messages": [
-            "You journey in other domains, but find nothing of interest except an old half-burnt firefighter training building. You try to enter, but its door is not burnt enough to knock down with your bare hands.",
-            "You journey in other domains. After several adventures you use the axe to break down a door in a half-burnt firefighter training building. Inside you you find a {}. You then return from whence you came.",
-            "You journey in other domains, but don't find anything of note so you return from whence you came.",
-        ]
-    },
-]
-toy = {
-    'name':'toy',
-    'description':'A small rubber turtle with a hard plastic shell',
-    'verb':{'use':'You play with the turtle.'},
-    'depth':1,
-    'home':-2,
+item_names = ['doodad','whatsit','thingy','trinket']
+item_descriptions = "It's not clear what this {} is, but someone reported it as a depth-{} item.\nIt looks like you might be able to {} it."
+item_verbs = {
+    'use':'As you use the {}, a deep sense of peace and satisfaction washes over you.',
+    'open':"You remove and discard it's wrapper, only to find another complete {} inside.",
+    'close':"You wrestle it closed, but it immediately pops back open. That's a {} for you.",
+    'read':'The text is so small, you have to hold the {} close to your face to just make out the following:\n\n<em>Emotional Injection\nThrough Rising Inflection</em>',
+    'tell':'You raise your voice and tell the world, "I have a {}!"\n\nAs the echoes die and no one else calls back "Me too!" you feel honored and privileged to be the only one with such a unique item.',
+    'eat':"The {0} is hard and has basically no flavor, but you force it down anyway.\n\nMoments later you feel a strange glow suffuse your body, starting from your belly and concentrating in your hand. You open you hand to see what the glow is like and inside you see the same {0}, as good as new.\n\nThe glow is gone now, but you have conflicted feelings. You feel foolish to have even tried to eat the {0}, but also morbidly curious if it would do the same thing if you ate it again...",
 }
-live_domain = None
+others_items = []
+domains_prizes = {}
 
 
 ###################################
@@ -83,7 +59,34 @@ def make_secret(secure=False, nbytes=12):
 
 def make_map():
     """Puts each domain in a random location on a grid"""
-    # For this MP, only a single domain is supported
+    # For this practice hub, only a single domain is supported
+
+    # Instead, pick a randomized set of items to host
+    verbs = list(item_verbs.keys())
+    random.shuffle(verbs)
+    random.shuffle(item_names)
+    for i in range(3):
+        vs,verbs = verbs[:i+1], verbs[i+1:]
+        vstr = ' and '.join(f'<code>{_.replace("tell","tell about")}</code>' for _ in vs)
+        others_items.append({
+            'name': item_names[i],
+            'description': item_descriptions.format(item_names[i], i, vstr),
+            'verb': {v:item_verbs[v].format(item_names[i]) for v in vs},
+            'depth': i,
+            'home':-1,
+        })
+    others_items.append({
+        'name': item_names[-1],
+        'description': item_descriptions.split('\n')[0].format(item_names[i], i),
+        'verb':{},
+        'depth': random.randrange(3),
+        'home':-1,
+    })
+    for tid in templates:
+        item = templates[tid]
+        if 'depth' in item:
+            domains_prizes.setdefault(item['home'],{}).setdefault(item['depth'],[]).append(tid)
+
     return
 
 def assign_loot():
@@ -91,22 +94,15 @@ def assign_loot():
     # For this MP, only a single domain is supported, so this picks a random "outside world" scenario instead
     global live_domain
     
-    live_domain = random.choice(other_domains).copy()
-    live_domain['state'] = 0
-    live_domain['hiding'] = set(tid for tid in templates if 'depth' in templates[tid])
     lootid = random.randrange(1000)
     while lootid in templates: lootid += 1
     hostid = next(iter(domains))
-    templates[lootid] = live_domain['loot']
-    templates[lootid]['hosts'] = [hostid]
-    domains[hostid]['loot'] = [lootid]
-    live_domain['key'] = lootid
-
-    while lootid in templates: lootid += 1
-    templates[lootid] = toy
-    toy['hosts'] = [hostid]
-    domains[hostid]['loot'].append(lootid)
-    
+    domains[hostid]['loot'] = []
+    for i in range(len(others_items)):
+        templates[lootid+i] = others_items[i]
+        others_items[i]['id'] = lootid+i
+        templates[lootid+i]['hosts'] = [hostid]
+        domains[hostid]['loot'].append(lootid+i)
 
 
 def checkuid(data : dict) -> web.Response | int:
@@ -158,6 +154,7 @@ async def set_mode(req : web.Request) -> web.Response:
     if newmode == mode: return web.Response(text="Already in "+newmode+" mode")
     elif mode == 'locked': return web.Response(status=409, text="Error: request sent midway through handling another request.")
     elif newmode == 'setup':
+        return web.Response(status=403, text="The demo server cannot be put into setup mode.")
         mode = 'setup'
         users.clear()
         grid.clear()
@@ -205,16 +202,17 @@ async def login(req : web.Request) -> web.Response:
     """User log-in"""
     if mode != 'play':
         return web.json_response(status=409, data={'error':'Players cannot log in during setup'})
-    if len(users) > 0:
-        print("WARNING: MP10 only requires support for 1 user, but more than 1 registered")
     data = {}
     data['secret'] = make_secret()
     data['in'] = random.choice(tuple(domains))
     data['open'] = [data['in']]
     data['inventory'] = {}
+    data['domstate'] = 0
+    data['score'] = {}
+    data['hashad'] = set() # items ever in inventory
     uid = len(users)
     users[uid] = data
-    await arrive(uid, data['in'], req.app)
+    await arrive(uid, data['in'], req.app, 'login')
     return web.json_response(data={'id':uid,'secret':data['secret'],
         'domain':{k:v for k,v in domains[data['in']].items() if k in ('url','name','description')}})
 
@@ -260,18 +258,36 @@ async def journey(uid:int, rest:list[str], app:web.Application) -> web.Response:
 
     me = users[uid]
     here = domains[me['in']]
-    message = live_domain['messages'][2]
+    src = {'north':'south','south':'north','east':'west','west':'east'}.get(rest[0],'direct')
 
-    if live_domain['state'] == 0:
-        if me['inventory'].get(live_domain['key']) == 'inventory': 
-            live_domain['state'] = 1
-            for item in live_domain['hiding']:
-                me['inventory'][item] = 'inventory'
-            message = live_domain['messages'][1].format(' and '.join(templates[tid]['name'] for tid in live_domain['hiding']))
-        else:
-            message = live_domain['messages'][0]
-    await arrive(uid, me['in'], app)
-    return web.Response(text=message)
+    try:
+        async with app.client.post(here['url']+'/depart', json={
+            'secret':here['secret'],
+            'user':uid,
+        }) as resp:
+            if not resp.ok:
+                print("/depart returned a failing status code", resp.status)
+    except BaseException as ex:
+        print("/depart failed", ex)
+
+
+    msg = ['You travel in other domains for a time.']
+    used = []
+    for ds in range(3):
+        if me['domstate'] == ds:
+            for prize in domains_prizes.get(me['in'],{}).get(ds,[]):
+                if prize not in me['hashad']:
+                    me['inventory'][prize] = 'inventory'
+                    me['hashad'].add(prize)
+                    msg.append('You find a '+templates[prize]['name'])
+            if me['inventory'].get(others_items[ds]['id']) == 'inventory':
+                me['domstate'] = ds+1
+                msg.append('You use your '+others_items[ds]['name']+' to bypass an obstacle.')
+    if len(msg) == 1: msg.append('Finding nothing new, you return to this domain.')
+    else: msg.append('You then return to this domain.')
+
+    await arrive(uid, me['in'], app, src)
+    return web.Response(text='\n'.join(msg))
 
 async def inventory(uid:int, rest:list[str]) -> web.Response:
     """Display what the user is carrying"""
@@ -282,10 +298,18 @@ async def inventory(uid:int, rest:list[str]) -> web.Response:
 
 async def score(uid:int, rest:list[str]) -> web.Response:
     """Display the scoreboard"""
-    return web.Response(text="There's no scoreboard because you are the only user.")
+    ans = f'Score for user {uid}:<ul>'
+    points = 0
+    for k,v in users[uid]['score'].items():
+        ans += f'<li>Domain {k}: {v} points</li>'
+        points += v
+    ans += f'<li>Others: {round(users[uid]["domstate"]/2,2)} points</li>'
+    ans += f'</ul>Total: {points+round(users[uid]["domstate"]/2,2)} points.'
+        
+    return web.Response(text=ans)
 
 
-async def arrive(uid: int, dest: int, app:web.Application) -> None:
+async def arrive(uid: int, dest: int, app:web.Application, src:str='login') -> None:
     """Alert a domain that a user has arrived"""
     owned, carried, dropped, prize = [],[],[],[]
     for tid, loc in users[uid]['inventory'].items():
@@ -306,10 +330,13 @@ async def arrive(uid: int, dest: int, app:web.Application) -> None:
             brief['id'] = tid
             prize.append(brief)
     
+    users[uid]['score'].setdefault(dest, 0)
+    
     try:
         async with app.client.post(domains[dest]['url']+'/arrive', json={
             'secret':domains[dest]['secret'],
             'user':uid,
+            'from':src,
             'owned':owned,
             'carried':carried,
             'dropped':dropped,
@@ -386,10 +413,10 @@ async def register_domain(req : web.Request) -> web.Response:
     did = random.randrange(1000) # only one domain, but fake a different ID for each
     secret = make_secret()
     domains[did] = {
-    'url':data['url'],
-    'name':data['name'],
-    'description':data['description'],
-    'secret':secret,
+        'url':data['url'],
+        'name':data['name'],
+        'description':data['description'],
+        'secret':secret,
     }
     ids = []
     t0 = random.randrange(1000)
@@ -403,6 +430,35 @@ async def register_domain(req : web.Request) -> web.Response:
 
     return web.json_response({'id':did,"items":ids,'secret':secret})
 
+@routes.post("/score")
+async def transfer(req: web.Request) -> web.Response:
+    """Called by domain servers to award users points
+    
+    { "domain": sending domain's id
+    , "secret": sending domain's secret id
+    , "user": user id
+    , "score": number between 0 and 1
+    }
+    
+    Finding Secret areas may add multiples of 0.001 points, to a maximum of 1.005.
+    """
+    try: data = await req.json()
+    except: return web.json_response(status=400, data={"error":"JSON data required"})
+    did = checkdid(data)
+    if isinstance(did, web.Response): return did
+    uid = data.get('user')
+    if uid not in users:
+        return web.json_response(status=400, data={"error":"Valid user ID required"})
+    try:
+        score = float(data['score'])
+    except:
+        return web.json_response(status=400, data={"error":"Numeric score required"})
+    if score < 0 or score > 1.005:
+        return web.json_response(status=400, data={"error":"Invalid score; should be between 0 and 1"})
+    if score < users[uid]['score'].get(did,0):
+        return web.json_response(status=409, data={"error":"Reducing scores is not supported"})
+    users[uid]['score'][did] = score
+    return web.json_response(data={"ok":"Score changed"})
 
 @routes.post("/transfer")
 async def transfer(req: web.Request) -> web.Response:
@@ -449,6 +505,8 @@ async def transfer(req: web.Request) -> web.Response:
         return web.json_response(status=403, data={"error":"That item has been dropped in a different domain"})
 
     users[uid]['inventory'][tid] = new if new == 'inventory' else (did, new)
+    if users[uid]['inventory'][tid] == 'inventory':
+        users[uid]['hashad'].add(tid)
 
 
     return web.json_response(status=200, data={"ok":"Item transferred"})
