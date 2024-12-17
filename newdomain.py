@@ -43,7 +43,6 @@ base_domain_state = {
             "items_name": [],
             "exits": {"right": "nexus"},
             "symbioticlock": False,
-            "suspensionbeams": False,
         },
         "lore_room": {
             "items_id": [],  # ItemIDs for the items located here
@@ -552,16 +551,16 @@ async def handle_command(req: Request) -> Response:
             )
 
         # Add visible items in current location
-        location = user_domain_state["locations"][location]
-        loc_items = location["items_id"]
+        location_state = user_domain_state["locations"][location]
+        loc_items = location_state["items_id"]
         for item_id in loc_items:
             item = user_domain_state["item_ids"][item_id]
             # Check if item is depth-0 or was dropped here
-            if ("depth" not in item or item["depth"] == 0) or (
+            if ("depth" not in item or item["depth"] == 0 ) or (
                 "location" in item and item["location"] == location
             ):
                 response.append(f'There is a {item["name"]} <sub>{item_id}</sub> here.')
-            elif ("suspension_beams" in location and location["suspension_beams"]):
+            elif ("suspensionbeams" in location_state and location_state["suspensionbeams"]):
                 response.append(
                 f'There is a {item["name"]} <sub>{item_id}</sub> gently suspended in a beam of light.'
             )
@@ -569,8 +568,6 @@ async def handle_command(req: Request) -> Response:
                  response.append(
                 f'There is a {item["name"]} <sub>{item_id}</sub> locked in place by a beam of light.'
             )
-
-        
         return Response(text="\n".join(response))
     elif len(command) >= 2 and command[0] == "look":
         location = user_state["location"]
@@ -592,7 +589,7 @@ async def handle_command(req: Request) -> Response:
             if not locstate["symbioticlock"]:
                 return Response(text="The lock appears as if you could <code>use</code> it, perhaps it needs some input to open something.")
             return Response(text="The lock appears to be open.")
-        elif location in ["lore_room", "puzzle_chamber_0", "puzzle_chamber_2"] and "suspensionbeam" in item:
+        elif location in ["lore_room", "puzzle_chamber_2"] and "suspensionbeam" in item:
             if not locstate["suspensionbeams"]:
                 return Response(text="The beams pulse violently, you better not mess with them.")
             return Response(text="The beams hum with low energy, you should be able to grab whatever they are suspending.")
@@ -732,37 +729,75 @@ async def handle_command(req: Request) -> Response:
 
         # Get destination
         destination = exits[direction]
-
+        if "$journey" in destination:
+            return Response(text=destination)
         # Update user location
-        user_state["location"] = destination
+        
 
         # Build response
         response = []
 
         # Add location description or name based on visit history
         if destination in user_state["visited_locations"]:
+            user_state["location"] = destination
             response.append(destination.capitalize())
         else:
-            user_state["visited_locations"].add(destination)
-            if destination == "foyer":
+            if destination == "nexus":
                 response.append(
-                    "You're in a hallway, unless it is a waiting room, or maybe a foyer? There are a couple of benches along the wall. To the east is an abandoned eatery of some kind blocked off by a grid of metal bars. To the north is a pair of double doors with a sign. To the east are double doors through which you can see indirect sunshine."
+                    "You stand in the Nexus, the central chamber of the labyrinth. A massive metallic spire rises from the ground, its surface smooth and flawless, casting a brilliant rainbow reflection as light passes over it. " +
+                    "Faint pulses of energy ripple outward, like the heartbeat of a labyrinth.\nPortals appear in all cardinal directions, leading to unknown destinations. To the left is a chamber with a towering mechanical tree. Going forwards you come to a large bronze gate."
                 )
-            elif destination == "classroom":
+                user_state["location"] = destination
+                user_state["visited_locations"].add(destination)
+            elif destination == "secret_chamber" and all(user_domain_state["locations"]["nexus"]["altar"]):
                 response.append(
-                    "You're in an auditorium with several tiers of seats and stairs leading down."
+                    "You've discovered the sarcophagus of the Nameless King. The air here is cold, and the walls are lined with skeletal remains fused with twisted metal.\n" +
+                    "At the center lies a broken, bone-carved throne, shrouded in faint bioluminescent vines. Perhaps it is waiting for the return of its master. The only way back leads to the central nexus."
                 )
-            else:  # podium
+                user_state["location"] = destination
+                user_state["visited_locations"].add(destination)
+            elif destination == "puzzle_chamber_0":
                 response.append(
-                    "This is a space for a speaker to use when addressing a class. There is a cabinet with several doors, a screen on a swinging arm, and an empty countertop. Stairs lead up into the student seating area."
+                    "This chamber hums with latent energy. Biomechanical surfaces glisten, and faint veins of light pulse through the floor like living circuitry.\n" +
+                    "A symbiotic lock rests at the far end, its tendrils twitching faintly in anticipation."
                 )
-                if user_domain_state["locations"]["podium"]["cabinet_state"] == "open":
-                    response.append(
-                        "Inside the cabinet is a tangle of wires, a rack of computers and amplifiers, and a large switch."
-                    )
+                user_state["location"] = destination
+                user_state["visited_locations"].add(destination)
+            elif destination == "lore_room" and user_domain_state["locations"]["nexus"]["gate1"]:
+                response.append(
+                    "The chamber feels sacred, as though it remembers a forgotten past. Rib-like metallic structures arch across the ceiling, forming an eerie dome. Relics from various civilizations are suspended in the center of the room, perhaps scientests once studied them here. \nIn the center lies a palm scanner with two indentations "+
+                    "To the left lies a room adorned with gold and to the right another puzzle chamber, this time with the crumbling ruins of a futuristic laboratory. Going forwards you encounter a large silver gate."
+                )
+                user_state["location"] = destination
+                user_state["visited_locations"].add(destination)
+            elif destination == "puzzle_chamber_1":
+                response.append(
+                    "You enter a room of strange geometries. Metallic spires rise at odd angles, emitting melodic tones that vibrate softly, shattered glass lines the floor.\n"
+                    "A palm scanner rests near the far wall, glowing faintly with energy."
+                )
+                user_state["location"] = destination
+                user_state["visited_locations"].add(destination)
+            elif destination == "puzzle_chamber_2" and user_domain_state["locations"]["lore_room"]["gate2"]:
+                response.append(
+                    "This chamber feels alive. Tendrils of biomechanical material stretch across the walls and ceiling, pulsing in rhythmic waves. You feel you near the end of your journey. You see a warning, powerful items are once again sealed away in beams of light, perhaps this time for the safety of all who come.\nNext to the items is a pair of retinal scanners. " +
+                    "A symbiotic lock rests at the far end, its tendrils twitching faintly in anticipation. Finally this time you find a large gold gate in froont of you."
+                )
+                user_state["location"] = destination
+                user_state["visited_locations"].add(destination)
+            elif destination == "treasure_room" and user_domain_state["locations"]["puzzle_chamber_2"]["gate3"]:
+                response.append(
+                    "You step into the treasure room—a vast, cathedral-like chamber shimmering with energy. Crystal formations jut from the ground, and at the center stands a massive vault. "+
+                    "The air hums with a faint, melodic resonance, as if something monumental lies just beyond reach.\n" + "On the wall a sample analyzer opens, waiting for something."
+                )
+                user_state["location"] = destination
+                user_state["visited_locations"].add(destination)
+            else:
+                return Response(text="You can't go that way from here.")
+                
 
         # Add visible items in new location
-        loc_items = user_domain_state["locations"][destination]["items_id"]
+        location_state = user_domain_state["locations"][destination]
+        loc_items = location_state["items_id"]
         for item_id in loc_items:
             item = user_domain_state["item_ids"][item_id]
             # Check if item is depth-0 or was dropped here
@@ -770,25 +805,23 @@ async def handle_command(req: Request) -> Response:
                 "location" in item and item["location"] == destination
             ):
                 response.append(f'There is a {item["name"]} <sub>{item_id}</sub> here.')
-
-        # If in podium with open cabinet, show depth-1 items
-        if (
-            destination == "podium"
-            and user_domain_state["locations"]["podium"]["cabinet_state"] == "open"
-        ):
-            for item_id in user_domain_state["locations"]["podium"]["items_id"]:
-                item = user_domain_state["item_ids"][item_id]
-                if item.get("depth") == 1:
-                    response.append(
-                        f'There is a {item["name"]} <sub>{item_id}</sub> inside the cabinet.'
-                    )
-
+            elif ("suspensionbeams" in location_state and location_state["suspensionbeams"]):
+                response.append(
+                f'There is a {item["name"]} <sub>{item_id}</sub> gently suspended in a beam of light.'
+            )
+            else:
+                 response.append(
+                f'There is a {item["name"]} <sub>{item_id}</sub> locked in place by a beam of light.'
+            )
         return Response(text="\n".join(response))
     elif len(command) == 2:
         verb = command[0]
-        print(command)
+        #print(command)
         item_query = command[1]
 
+        #special cases
+        
+        
         found_item = None
 
         # Check if item is in inventory (owned or carried)
@@ -809,7 +842,7 @@ async def handle_command(req: Request) -> Response:
                 found_item = user_state["items_id"]["carried"][
                     user_state["items_name"]["carried"][item_query]
                 ]
-        print(found_item)
+        #print(found_item)
         if found_item and "verb" in found_item:
             # Check if verb exists for item
             if verb in found_item["verb"]:
