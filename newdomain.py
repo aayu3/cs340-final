@@ -30,7 +30,7 @@ base_domain_state = {
                 "forward": "lore_room",
                 "forwards": "lore_room",
             },
-            "gate_1": False,
+            "gate1": False,
             "altar": [False, False, False, False, False, False],
         },
         "secret_chamber": {
@@ -42,8 +42,8 @@ base_domain_state = {
             "items_id": [],  # ItemIDs for the items located here
             "items_name": [],
             "exits": {"right": "nexus"},
-            "symbiotic_lock": False,
-            "suspension_beams": False,
+            "symbioticlock": False,
+            "suspensionbeams": False,
         },
         "lore_room": {
             "items_id": [],  # ItemIDs for the items located here
@@ -54,12 +54,12 @@ base_domain_state = {
                 "backwards": "nexus",
                 "left": "trap_room",
                 "right": "puzzle_chamber_1",
-                "forward" : "puzzle_chamber",
-                "forwards" : "puzzle_chamber"
+                "forward" : "puzzle_chamber_2",
+                "forwards" : "puzzle_chamber_2"
             },
-            "suspension_beams": False,
-            "palm_scan": False,
-            "gate_2": False,
+            "suspensionbeams": False,
+            "palmscanner": False,
+            "gate2": False,
         },
         "trap_room": {
             "items_id": [],  # ItemIDs for the items located here
@@ -72,23 +72,23 @@ base_domain_state = {
             "items_id": [],  # ItemIDs for the items located here
             "items_name": [],
             "exits": {"left": "lore_room", "back": "lore_room","backwards": "lore_room","backward": "lore_room"},
-            "symbiotic_lock": False,
+            "symbioticlock": False,
         },
         "puzzle_chamber_2": {
             "items_id": [],  # ItemIDs for the items located here
             "items_name": [],
             "exits": {"backwards": "lore_room", "back" : "lore_room"},
-            "gate_3": False,
-            "suspension_beams": False,
-            "symbiotic_lock": False,
-            "retinal_scan": False,
+            "gate3": False,
+            "suspensionbeams": False,
+            "symbioticlock": False,
+            "retinalscanner": False,
         },
         "treasure_room": {
             "items_id": [],  # ItemIDs for the items located here
             "items_name": [],
             "exits": {"backwards": "puzzle_chamber_3"},
             "vault": False,
-            "sample_analyzer": False,
+            "sampleanalyzer": False,
         },
     },
 }
@@ -532,7 +532,7 @@ async def handle_command(req: Request) -> Response:
             )
         elif location == "lore_room":
             response.append(
-                "The chamber feels sacred, as though it remembers a forgotten past. Rib-like metallic structures arch across the ceiling, forming an eerie dome. Relics from various civilizations are suspended in the center of the room, perhaps scientests once studied them here. In the center lies a pedestal with two indentations, perhaps a pair of hands might fit?\n"+
+                "The chamber feels sacred, as though it remembers a forgotten past. Rib-like metallic structures arch across the ceiling, forming an eerie dome. Relics from various civilizations are suspended in the center of the room, perhaps scientests once studied them here. \nIn the center lies a palm scanner with two indentations "+
                 "To the left lies a room adorned with gold and to the right another puzzle chamber, this time with the crumbling ruins of a futuristic laboratory. Going forwards you encounter a large silver gate."
             )
         elif location == "puzzle_chamber_1":
@@ -542,7 +542,7 @@ async def handle_command(req: Request) -> Response:
             )
         elif location == "puzzle_chamber_2":
             response.append(
-                "This chamber feels alive. Tendrils of biomechanical material stretch across the walls and ceiling, pulsing in rhythmic waves. You feel you near the end of your journey. You see a warning, powerful items are once again sealed away in beams of light, perhaps this time for the safety of all who come. Next to the items are two retinal scanners.\n" +
+                "This chamber feels alive. Tendrils of biomechanical material stretch across the walls and ceiling, pulsing in rhythmic waves. You feel you near the end of your journey. You see a warning, powerful items are once again sealed away in beams of light, perhaps this time for the safety of all who come.\nNext to the items is a pair of retinal scanners. " +
                 "A symbiotic lock rests at the far end, its tendrils twitching faintly in anticipation. Finally this time you find a large gold gate in froont of you."
             )
         elif location == "treasure_room":
@@ -572,18 +572,58 @@ async def handle_command(req: Request) -> Response:
 
         
         return Response(text="\n".join(response))
-    elif len(command) == 2 and command[0] == "look":
+    elif len(command) >= 2 and command[0] == "look":
         location = user_state["location"]
         locstate = user_domain_state["locations"][location]
-        item = command[1]
+        item = "".join(command[1:])
 
         #special cases
-        if location == "nexus" and (item == "altar" or item == "spire") and not all(locstate["altar"]):
+        if location == "nexus" and ("altar" in item or "spire" in item) and not all(locstate["altar"]):
             return Response(text="The altar does not respond, perhaps it awaits more offerings.") 
-        elif location == "nexus" and (item == "altar" or item == "spire") and all(locstate["altar"]):
+        elif location == "nexus" and ("altar" in item or "spire" in item) and all(locstate["altar"]):
             return Response(text="The altar hums with a gentle glow try <code>touch</code>ing it.")
+        elif location == "nexus" and "gate" in item:
+            if not locstate["gate1"]:
+                return Response(text="The gate is closed, try searching for a lock somewhere.")
+            return Response(text="The gate is open.")
+        elif location == "secret_chamber" and item == "throne":
+            return Response(text="The throne gives a dull hum, you are not the person it has been waiting for.")
+        elif location in ["puzzle_chamber_0", "puzzle_chamber_1", "puzzle_chamber_2"] and "symbioticlock" in item:
+            if not locstate["symbioticlock"]:
+                return Response(text="The lock appears as if you could <code>use</code> it, perhaps it needs some input to open something.")
+            return Response(text="The lock appears to be open.")
+        elif location in ["lore_room", "puzzle_chamber_0", "puzzle_chamber_2"] and "suspensionbeam" in item:
+            if not locstate["suspensionbeams"]:
+                return Response(text="The beams pulse violently, you better not mess with them.")
+            return Response(text="The beams hum with low energy, you should be able to grab whatever they are suspending.")
+        elif location == "lore_room" and "palmscanner" in item:
+            if not locstate["palmscanner"]:
+                return Response(text="The palm scanner seems to be waiting for something, try <code>use</code>ing it.")
+            return Response(text="The palm scanner flashes green.")
+        elif location == "lore_room" and "gate" in item:
+            if not locstate["gate2"]:
+                return Response(text="The gate is closed, try searching for a lock somewhere.")
+            return Response(text="The gate is open.")
+        elif location == "puzzle_chamber_2" and "retinalscanner" in item:
+            if not locstate["retinalscanner"]:
+                return Response(text="The retinal scanners seems to be waiting for something, try <code>use</code>ing it.")
+            return Response(text="The retinal scanners flash green.")
+        elif location == "puzzle_chamber_2" and "gate" in item:
+            if not locstate["gate3"]:
+                return Response(text="The gate is closed, try searching for a lock somewhere.")
+            return Response(text="The gate is open.")
+        elif location == "treasure_room":
+            if item == "sampleanalyzer":
+                if not locstate["sampleanalyzer"]:
+                    return Response(text="The sample analyzer seems to be waiting for something, try <code>use</code>ing it.")
+                return Response(text="The sample analyzer flashes green.")
+            elif item == "vault":
+                if not locstate["vault"]:
+                    return Response(text="The vault is locked shut.")
+                return Response(text="The vault is open flashes green.")
+        elif location == "trap_room" and "orb" in item:
+            return Response(text="The mysterious orb beckons to you, try <code>touch</code>ing it.")
         
-            
         # Regular items
         found_item = None
 
@@ -595,6 +635,10 @@ async def handle_command(req: Request) -> Response:
             elif item_id in user_state["items_id"]["carried"]:
                 found_item = user_state["items_id"]["carried"][item_id]
         else:  # Search by name
+            if user_state["items_name"]["owned"].count(item) > 1:
+                return Response(text=f"Please specify the item ID, multiple instances of {item} where found.")
+            elif user_state["items_name"]["carried"].count(item) > 1:
+                return Response(text=f"Please specify the item ID, multiple instances of {item} where found.")
             if item in user_state["items_name"]["owned"]:
                 found_item = user_state["items_id"]["owned"][
                     user_state["items_name"]["owned"][item]
@@ -606,7 +650,7 @@ async def handle_command(req: Request) -> Response:
 
         # If not in inventory, check current location
         if not found_item:
-            duplicate, found_item, item_id = find_item_location(user_id, item_query)
+            duplicate, found_item, item_id = find_item_location(user_id, item)
         location = user_state["location"]
         current_loc = user_domain_state["locations"][location]
         
