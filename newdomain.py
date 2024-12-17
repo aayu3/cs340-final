@@ -18,41 +18,145 @@ base_domain_state = {
     'user_state': {}, # User State
     'owned': [], # ItemIDs for objects owned here, but in other domains, these could also end up in the users inventory etc
     'locations': {
-        'foyer': {
+        'nexus': {
             'items_id': [], #ItemIDs for the items located here
             'items_name': [],
-            'exits': {'north': 'classroom', 'east': None}
+            'exits': {'left': 'puzzle_chamber_0', 'north': '$journey north', 'south': "$journey south", 'west':'$journey west', 'east': '$journey east', 'forward':'lore_room'},
+            'gate_1': False,
+            'altar' : [False, False, False, False, False, False]
         },
-        'classroom': {
+        'secret_chamber': {
             'items_id': [], #ItemIDS for the items located here
             'items_name': [],
-            'exits': {'south': 'foyer', 'down': 'podium', 'west': 'podium'}
+            'exits': {'left': "central_chamber"}
         },
-        'podium': {
+        'puzzle_chamber_0': {
             'items_id': [], #ItemIDs for the items located here
             'items_name': [],
-            'exits': {'up': 'classroom', 'east': 'classroom'},
-            'cabinet_state': 'locked', # locked, closed, open
-            'switch_state': 'down',
-            'screen_state': 'blank' # blank, password, won
+            'exits': {'right': 'nexus'},
+            'symbiotic_lock' : False,
+            'suspension_beams': False,
+        },
+        'lore_room': {
+            'items_id': [], #ItemIDs for the items located here
+            'items_name': [],
+            'exits': {'backward': 'nexus', 'left': 'trap_room', 'right': 'puzzle_chamber_1'},
+            'suspension_beams': False,
+            'palm_scan' : False,
+            'gate_2': False
+        },
+        'puzzle_chamber_1': {
+            'items_id': [], #ItemIDs for the items located here
+            'items_name': [],
+            'exits': {'left': 'lore_room'},
+            'suspension_beams': False,
+            'palm_scan' : False,
+            'symbiotic_lock' : False
+        },
+        'puzzle_chamber_2': {
+            'items_id': [], #ItemIDs for the items located here
+            'items_name': [],
+            'exits': {'backwards': 'lore_room'},
+            'gate_3': False,
+            'suspension_beams': False,
+            'symbiotic_lock' : False,
+            'retinal_scan' : False
+        },
+        'treasure_room': {
+            'items_id': [], #ItemIDs for the items located here
+            'items_name': [],
+            'exits': {'backwards': 'puzzle_chamber_3'},
+            'vault': False,
+            'sample_analyzer' : False,
         }
     }
 }
 
 domain_items = [
     {
-        "name": "paper",
-        "description":"A piece of paper with writing on it.",
+        "name": "tissue_sample",
+        "description": "A preserved organic sample, faintly pulsating. (<code>hint</code>)",
         "verb": {
-          "read":'The paper reads <q>XYZZY</q>'
+          "hint":'Consider searching for a sample analyzer'
         },
     },
     {
-        "name": "key",
-        "description":"A small key, as if for a locker or cabinet.",
-        "verb": {},
+        "name": "metal_cranium",
+        "description": "A cold, polished skull crafted from an unknown alloy. (<code>hint</code>)",
+        "verb": {
+          "hint":'Consider searching for a sample analyzer'
+        },
+        "depth": 2
+    },
+    {
+        "name": "biomechanical_eye_left",
+        "description": "A left eye, fused with advanced biomechanical circuitry. (<code>hint</code>)",
+        "verb": {
+            "hint": "Consider searching for a retinal scanner"
+        },
+        "depth": 1
+    },
+    {
+        "name": "biomechanical_eye_right",
+        "description": "A right eye, lifeless but unnervingly pristine, like a crystal. (<code>hint</code>)",
+        "verb": {
+            "hint": "Consider searching for a retinal scanner"
+        },
+    },
+    {
+        "name": "biomechanical_palm_left",
+        "description": "A metal left palm, its surface engraved with glowing, organic veins. (<code>hint</code>)",
+        "verb": {
+            "hint" : "Consider searching for a palm scanner"
+        },
         "depth": 0
     },
+    {
+        "name": "biomechanical_palm_right",
+        "description": "A right palm, smooth and cold to the touch. (<code>hint</code>)",
+        "verb": {
+            "hint" : "Consider searching for a palm scanner"
+        },
+    },
+    {
+        "name": "biomechanical_tablet_0",
+    "description": "A humming tablet alive with faint pulses of energy. <code>(use/read/hint1/hint2/hint3/solution)</code>",
+        "verb": {
+            "hint1" : "Perhaps you could use it to unlock something",
+            "hint2" : "Perhaps the Z's and O's correspond to something",
+            "hint3" : "Zero/One",
+            "solution" : "89",
+            "read": "In the age of fire, a young noble was born who would later be known as the Nameless Ki... the rest of the text is indecipherable, save for the string <code>OZOOZZO</code>",
+        },
+    },
+    {
+        "name": "biomechanical_tablet_1",
+        "description": "An active tablet etched with glowing script. <code>(use/read/hint1/hint2/solution)</code>",
+        "verb": {
+            "hint1" : "Perhaps you could use it to unlock something",
+            "hint2" : "Consider the capitilization Of this Sentence: 37",
+            "solution" : "21185",
+            "read" : "After his Ascension to the Throne the Nameless King ushered in an era of Peace", #21185
+        },
+    },
+    {
+        "name": "biomechanical_tablet_3",
+        "description": "A pulsing tablet that feels warm, almost alive. <code>(use/read/hint1/hint2/hint3/solution)</code>",
+        "verb": {
+            "hint1" : "Perhaps you could use it to unlock something",
+            "hint2" : "Consider what words may have multiple meanings",
+            "hint3" : "It sure is ODD that you EVEN need to come here for more clues 1285",
+            "solution" : "303625",
+            "read" : "Even though the Nameless King has passed, odd rumors remain of his treasure, sealed away behind an altar of iridescent light",
+        },
+    },
+    {
+        "name" : "pendant_of_nk",
+        "description": "A steel pendant, with a pulsing heart in its center, it allows the user to return to the Ossuary of the Nameless King",
+        "verb" : {
+            "user" : "$journey 001"
+        }
+    }
 ]
 
 @routes.post('/newhub')
@@ -67,8 +171,8 @@ async def register_with_hub_server(req: Request) -> Response:
     url = await req.text()
     async with req.app.client.post(url+'/register', json={
           'url': whoami,
-          'name': "MP10",
-          'description': "An example domain based in Siebel 1404 and its surroundings.",
+          'name': "Ossuary of the Nameless King",
+          'description': "A biomechanical church, dedicated to the revered Nameless King",
           'items': domain_items,
       }) as resp:
           data = await resp.json()
@@ -82,20 +186,6 @@ async def register_with_hub_server(req: Request) -> Response:
     base_domain_info['secret'] = data['secret']
     
     # TO DO: clear any user/game state to its initial state
-    '''
-    base_domain_state['user_state'].clear()
-    base_domain_state['owned'].clear()
-    base_domain_state['item_ids'].clear()
-    base_domain_state['item_names'].clear()
-
-    for location in base_domain_info['locations'].values():
-        location['items_id'].clear()
-        location['items_name'].clear()
-
-    base_domain_info['locations']['podium']['cabinet_state'] = 'locked'
-    base_domain_info['locations']['podium']['switch_state'] = 'down'
-    base_domain_info['locations']['podium']['screen_state'] = 'blank'
-    '''
     users.clear()
 
     # Assign ItemIDs to the base_domain_state
@@ -105,18 +195,9 @@ async def register_with_hub_server(req: Request) -> Response:
         base_domain_state['item_ids'][item_id] = item_desc
         base_domain_state['item_names'][item_desc['name']] = item_id
     
-    # Place paper in foyer (first item)
-    paper_id = data['items'][0]
-    paper_name = domain_items[0]['name']
-    base_domain_state['locations']['foyer']['items_id'].append(paper_id)
-    base_domain_state['locations']['foyer']['items_name'].append(paper_name)
-
-    # Add key to owned items (second item)
-    key_id = data['items'][1]
-    key_name = domain_items[1]['name']
-    base_domain_state['locations']['foyer']['items_id'].append(key_id)
-    base_domain_state['locations']['foyer']['items_name'].append(key_name)
-    base_domain_state['owned'].append(key_id)
+    #locations for items in order
+    ["puzzle_chamber_2", "other", "other", "puzzle_chamber_1", "other", "puzzle_chamber_0", "nexus", "lore_room", "puzzle_chamber_2", "treasure_room"]
+    
 
     return json_response(data={'ok': 'Domain registered successfully'})
 
@@ -143,6 +224,7 @@ async def register_with_hub_server(req: Request) -> Response:
         # Update location to foyer and add to visited locations
         user_state['location'] = 'foyer'
         user_state['visited_locations'].add('foyer')
+        user_state['arrived'] = True
     else:
         # Create new user state object
         # Create new user state object with dual indexing
@@ -161,6 +243,7 @@ async def register_with_hub_server(req: Request) -> Response:
                 'dropped': {},
                 'prize': {}
             },
+            'arrived': True,
             'location': 'foyer',
             'visited_locations': {'foyer'}
         }
@@ -222,7 +305,18 @@ async def register_with_hub_server(req: Request) -> Response:
 
 @routes.post('/depart')
 async def register_with_hub_server(req: Request) -> Response:
-    return 0
+    data = await req.json()
+
+    user_id = data['user'] 
+    if user_id not in users:
+        return json_response(status=404, data={'error': 'User not found'})
+    
+    user_domain_state = users[user_id]
+    user_state = user_domain_state['user_state']
+
+    user_state['arrived'] = False
+
+    return json_response(status=200, data={'ok': f'User succesfully departed from domain {base_domain_info["domain_id"]}'})
 
 @routes.post('/dropped')
 async def register_with_hub_server(req: Request) -> Response:
@@ -243,6 +337,10 @@ async def register_with_hub_server(req: Request) -> Response:
     # Get user's current location and state and domainstate
     user_domain_state = users[user_id]
     user_state = user_domain_state['user_state']
+
+    if not user_state["arrived"]:
+        return json_response(status=409, data={'error': 'User has departed more recently than they have arrived'})
+
     location = user_state['location']
     
     
@@ -293,6 +391,10 @@ async def handle_command(req: Request) -> Response:
         
     user_domain_state = users[user_id]
     user_state = user_domain_state['user_state']
+
+    if not user_state["arrived"]:
+        return json_response(status=409, data={'error': 'User has departed more recently than they have arrived'})
+
     command = data['command']
     
     # Handle look command
