@@ -32,7 +32,7 @@ base_domain_state = {
                 "forwards": "lore_room",
             },
             "gate1": False,
-            "altar": [False, False, False, False, False, False],
+            "altar": {"tissuesample":False, "metalcranium":False, "biomecheyel":False, "biomecheyer":False, "biomechpalml":False, "biomechpalmr":False},
         },
         "secret_chamber": {
             "items_id": [],  # ItemIDS for the items located here
@@ -585,7 +585,7 @@ async def handle_command(req: Request) -> Response:
         item = "".join(command[1:])
 
         #special cases
-        if location == "nexus" and ("altar" in item or "spire" in item) and not all(locstate["altar"]):
+        if location == "nexus" and ("altar" in item or "spire" in item) and not all(locstate["altar"].values()):
             return Response(text="The altar does not respond, perhaps it awaits more offerings.") 
         elif location == "nexus" and ("altar" in item or "spire" in item) and all(locstate["altar"]):
             return Response(text="The altar hums with a gentle glow try <code>touch</code>ing it.")
@@ -760,7 +760,7 @@ async def handle_command(req: Request) -> Response:
                 )
                 user_state["location"] = destination
                 user_state["visited_locations"].add(destination)
-            elif destination == "secret_chamber" and all(user_domain_state["locations"]["nexus"]["altar"]):
+            elif destination == "secret_chamber" and all(user_domain_state["locations"]["nexus"]["altar"].values()):
                 if not destination in user_state["visited_locations"]:  
                     user_domain_state["score"] += 0.001
                 response.append(
@@ -842,9 +842,23 @@ async def handle_command(req: Request) -> Response:
         locstring = user_state['location']
         locstate = user_domain_state['locations'][locstring]
         #special cases
+        if (verb == "offer"):
+            if (locstring == "nexus" and ("altar" in item or "spire" in item)):
+                owneyel = (eyelid in user_state["items_id"]["owned"]) or (eyelid in user_state["items_id"]["carried"])
+                owneyer = (eyerid in user_state["items_id"]["owned"]) or (eyerid in user_state["items_id"]["carried"])
+                ownpalml = (palmlid in user_state["items_id"]["owned"]) or (palmlid in user_state["items_id"]["carried"])
+                ownpalmr = (palmrid in user_state["items_id"]["owned"]) or (palmrid in user_state["items_id"]["carried"])
+                ownts = (tsid in user_state["items_id"]["owned"]) or (tsid in user_state["items_id"]["carried"])
+                ownskull = (skullid in user_state["items_id"]["owned"]) or (skullid in user_state["items_id"]["carried"])
+                items = [owneyel, owneyer, ownpalml, ownpalmr, ownts, ownskull]
+                if all(items):
+                    for i in items:
+                        locstate["altar"][i] = True
+                        return Response(text="The altar has accepted your offering, try <code>touch</code>ing the altar now.")
+                    
         if (verb == "use"):
             if locstring == "nexus" and ("altar" in item_query or "spire" in item_query):
-                if all(locstate["altar"]):
+                if all(locstate["altar"].values()):
                     user_state['location'] = "secret_chamber"
                     user_domain_state["score"] += 0.001
                     user_state["visited_locations"].add("secret_chamber")
@@ -900,7 +914,7 @@ async def handle_command(req: Request) -> Response:
                 return Response(text="It's a trap! You've been teleported back to the nexus."
             )
             elif locstring == "nexus" and ("altar" in item_query or "spire" in item_query):
-                if all(locstate["altar"]):
+                if all(locstate["altar"].values()):
                     user_state['location'] = "secret_chamber"
                     user_state["visited_locations"].add("secret_chamber")
                     return Response(text="You've discovered the sarcophagus of the Nameless King. The air here is cold, and the walls are lined with skeletal remains fused with twisted metal.\n" +
