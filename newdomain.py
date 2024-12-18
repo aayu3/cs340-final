@@ -843,7 +843,7 @@ async def handle_command(req: Request) -> Response:
         locstate = user_domain_state['locations'][locstring]
         #special cases
         if (verb == "offer"):
-            if (locstring == "nexus" and ("altar" in item or "spire" in item)):
+            if (locstring == "nexus" and ("altar" in item_query or "spire" in item_query)):
                 owneyel = (eyelid in user_state["items_id"]["owned"]) or (eyelid in user_state["items_id"]["carried"])
                 owneyer = (eyerid in user_state["items_id"]["owned"]) or (eyerid in user_state["items_id"]["carried"])
                 ownpalml = (palmlid in user_state["items_id"]["owned"]) or (palmlid in user_state["items_id"]["carried"])
