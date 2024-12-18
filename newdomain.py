@@ -691,8 +691,7 @@ async def handle_command(req: Request) -> Response:
             can_take = ("suspensionbeams" in current_loc and current_loc["suspensionbeams"]) or (
                 "location" in found_item and found_item["location"] == location
             )  or (depth == 0) or ("vault" in current_loc and current_loc["vault"]) or (location == "nexus" or location == "puzzle_chamber_0")
-            print(current_loc)
-            print(can_take)
+
             if can_take:
                 # Prepare transfer request
                 transfer_data = {
@@ -852,12 +851,13 @@ async def handle_command(req: Request) -> Response:
                 ownskull = (skullid in user_state["items_id"]["owned"]) or (skullid in user_state["items_id"]["carried"])
                 items = [owneyel, owneyer, ownpalml, ownpalmr, ownts, ownskull]
                 if all(items):
-                    for i in items:
-                        locstate["altar"][i] = True
-                        return Response(text="The altar has accepted your offering, try <code>touch</code>ing the altar now.")
+                    for key in locstate["altar"].keys():
+                        locstate["altar"][key] = True
+                    return Response(text="The altar has accepted your offering, try <code>touch</code>ing the altar now.")
                     
         if (verb == "use"):
             if locstring == "nexus" and ("altar" in item_query or "spire" in item_query):
+                print(locstate)
                 if all(locstate["altar"].values()):
                     user_state['location'] = "secret_chamber"
                     user_domain_state["score"] += 0.001
