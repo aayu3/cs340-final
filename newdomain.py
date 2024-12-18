@@ -642,10 +642,6 @@ async def handle_command(req: Request) -> Response:
             elif item_id in user_state["items_id"]["carried"]:
                 found_item = user_state["items_id"]["carried"][item_id]
         else:  # Search by name
-            if user_state["items_name"]["owned"].count(item) > 1:
-                return Response(text=f"Please specify the item ID, multiple instances of {item} where found.")
-            elif user_state["items_name"]["carried"].count(item) > 1:
-                return Response(text=f"Please specify the item ID, multiple instances of {item} where found.")
             if item in user_state["items_name"]["owned"]:
                 found_item = user_state["items_id"]["owned"][
                     user_state["items_name"]["owned"][item]
@@ -888,17 +884,16 @@ async def handle_command(req: Request) -> Response:
                 ownskull = (skullid in user_state["items_id"]["owned"]) or (skullid in user_state["items_id"]["carried"])
                 if ownts or ownskull:
                     locstate["vault"] = True
-                    user_domain_state["score"] = 1
-                    transfer_data = {
+                    score_data = {
                     "domain": base_domain_info["domain_id"],
                     "secret": base_domain_info["secret"],
                     "user": user_id,
-                    "score": 1 + user_domain_state["score"]
+                    "score": 1.0 + user_domain_state["score"]
                     }
 
                     # Call transfer endpoint
                     async with req.app.client.post(
-                        base_domain_info["hub_url"] + "/score", json=transfer_data
+                        base_domain_info["hub_url"] + "/score", json=score_data
                     ) as resp:
                         info = await resp.json()
                     return Response(text= "The sample analyzer flashes green. You hear the vault click in the background.")
