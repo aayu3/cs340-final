@@ -17,6 +17,7 @@ base_domain_state = {
     "item_names": {},  # Name: ItemID
     "user_state": {},  # User State
     "owned": [],  # ItemIDs for objects owned here, but in other domains, these could also end up in the users inventory etc
+    "score": 0, #score
     "locations": {
         "nexus": {
             "items_id": [],  # ItemIDs for the items located here
@@ -41,7 +42,7 @@ base_domain_state = {
         "puzzle_chamber_0": {
             "items_id": [],  # ItemIDs for the items located here
             "items_name": [],
-            "exits": {"right": "nexus"},
+            "exits": {"right": "nexus","back" : "nexus", "backwards": "nexus"},
             "symbioticlock": False,
         },
         "lore_room": {
@@ -507,7 +508,12 @@ async def handle_command(req: Request) -> Response:
         )
 
     command = data["command"]
-
+    palmlid = user_domain_state["item_names"]["biomechpalml"]
+    palmrid = user_domain_state["item_names"]["biomechpalmr"]
+    eyelid = user_domain_state["item_names"]["biomecheyel"]
+    eyerid = user_domain_state["item_names"]["biomecheyer"]
+    tsid = user_domain_state["item_names"]["tissuesample"]
+    skullid = user_domain_state["item_names"]["metalcranium"]
     # Handle look command
     if command == ["look"]:
         location = user_state["location"]
@@ -548,6 +554,10 @@ async def handle_command(req: Request) -> Response:
             response.append(
                 "You step into the treasure room—a vast, cathedral-like chamber shimmering with energy. Crystal formations jut from the ground, and at the center stands a massive vault. "+
                 "The air hums with a faint, melodic resonance, as if something monumental lies just beyond reach.\n" + "On the wall a sample analyzer opens, waiting for something."
+            )
+        elif location == "trap_room":
+            response.append(
+                    "You step into a vast room with a beautiful golden orb in the middle. It pulses dangeourously but you can't help but desire it."
             )
 
         # Add visible items in current location
@@ -676,12 +686,13 @@ async def handle_command(req: Request) -> Response:
 
         if found_item:
             # Check permissions based on depth and location or if dropped
-            depth = found_item.get('depth', 0)
+            depth = found_item.get('depth', -1)
             
-            can_take = ("suspension_beams" in current_loc and current_loc["suspension_beams"]) or (
+            can_take = ("suspensionbeams" in current_loc and current_loc["suspensionbeams"]) or (
                 "location" in found_item and found_item["location"] == location
-            )  or (depth == 0)
-
+            )  or (depth == 0) or ("vault" in current_loc and current_loc["vault"]) or (location == "nexus" or location == "puzzle_chamber_0")
+            print(current_loc)
+            print(can_take)
             if can_take:
                 # Prepare transfer request
                 transfer_data = {
@@ -750,6 +761,8 @@ async def handle_command(req: Request) -> Response:
                 user_state["location"] = destination
                 user_state["visited_locations"].add(destination)
             elif destination == "secret_chamber" and all(user_domain_state["locations"]["nexus"]["altar"]):
+                if not destination in user_state["visited_locations"]:  
+                    user_domain_state["score"] += 0.001
                 response.append(
                     "You've discovered the sarcophagus of the Nameless King. The air here is cold, and the walls are lined with skeletal remains fused with twisted metal.\n" +
                     "At the center lies a broken, bone-carved throne, shrouded in faint bioluminescent vines. Perhaps it is waiting for the return of its master. The only way back leads to the central nexus."
@@ -773,7 +786,7 @@ async def handle_command(req: Request) -> Response:
             elif destination == "puzzle_chamber_1":
                 response.append(
                     "You enter a room of strange geometries. Metallic spires rise at odd angles, emitting melodic tones that vibrate softly, shattered glass lines the floor.\n"
-                    "A palm scanner rests near the far wall, glowing faintly with energy."
+                    "A symbiotic lock rests at the far end, its tendrils twitching faintly in anticipation."
                 )
                 user_state["location"] = destination
                 user_state["visited_locations"].add(destination)
@@ -791,6 +804,14 @@ async def handle_command(req: Request) -> Response:
                 )
                 user_state["location"] = destination
                 user_state["visited_locations"].add(destination)
+            elif destination == "trap_room":
+                response.append(
+                    "You step into a vast room with a beautiful golden orb in the middle. It pulses dangeourously but you can't help but desire it."
+                )
+                user_state["location"] = destination
+                user_state["visited_locations"].add(destination)
+                
+                
             else:
                 return Response(text="You can't go that way from here.")
                 
@@ -818,9 +839,75 @@ async def handle_command(req: Request) -> Response:
         verb = command[0]
         #print(command)
         item_query = command[1]
-
+        locstring = user_state['location']
+        locstate = user_domain_state['locations'][locstring]
         #special cases
-        
+        if (verb == "use"):
+            if locstring == "nexus" and ("altar" in item_query or "spire" in item_query):
+                if all(locstate["altar"]):
+                    user_state['location'] = "secret_chamber"
+                    user_domain_state["score"] += 0.001
+                    user_state["visited_locations"].add("secret_chamber")
+                    return Response(text="You've discovered the sarcophagus of the Nameless King. The air here is cold, and the walls are lined with skeletal remains fused with twisted metal.\n" +
+                    "At the center lies a broken, bone-carved throne, shrouded in faint bioluminescent vines. Perhaps it is waiting for the return of its master. The only way back leads to the central nexus."
+                    )
+                else:
+                    return Response(text="The altar does not respond, perhaps it awaits more offerings.") 
+            elif locstring == "lore_room" and "palmscanner" in item_query:
+                ownpalml = (palmlid in user_state["items_id"]["owned"]) or (palmlid in user_state["items_id"]["carried"])
+                ownpalmr = (palmrid in user_state["items_id"]["owned"]) or (palmrid in user_state["items_id"]["carried"])
+                if ownpalml and ownpalmr:
+                    locstate["suspensionbeams"] = True
+                    return Response(text= "The palm scanner flashes green.")
+                else:
+                    return Response(text= "You are missing one or more mechanical palms.")
+            elif locstring == "puzzle_chamber_2" and "retinalscanner" in item_query:
+                owneyel = (eyelid in user_state["items_id"]["owned"]) or (eyelid in user_state["items_id"]["carried"])
+                owneyer = (eyerid in user_state["items_id"]["owned"]) or (eyerid in user_state["items_id"]["carried"])
+                if owneyel and owneyer:
+                    locstate["suspensionbeams"] = True
+                    return Response(text= "The retinal scanner flashes green.")
+                else:
+                    return Response(text= "You are missing one or more mechanical eyes.")
+            elif locstring == "treasure_room" and "sampleanalyzer" in item_query:
+                ownts = (tsid in user_state["items_id"]["owned"]) or (tsid in user_state["items_id"]["carried"])
+                ownskull = (skullid in user_state["items_id"]["owned"]) or (skullid in user_state["items_id"]["carried"])
+                if ownts or ownskull:
+                    locstate["vault"] = True
+                    user_domain_state["score"] = 1
+                    transfer_data = {
+                    "domain": base_domain_info["domain_id"],
+                    "secret": base_domain_info["secret"],
+                    "user": user_id,
+                    "score": 1 + user_domain_state["score"]
+                    }
+
+                    # Call transfer endpoint
+                    async with req.app.client.post(
+                        base_domain_info["hub_url"] + "/transfer", json=transfer_data
+                    ) as resp:
+                        info = await resp.json()
+                    return Response(text= "The sample analyzer flashes green. You hear the vault click in the background.")
+                else:
+                    return Response(text= "You are missing the tissue sample or the metal cranium.")
+            elif locstring == "trap_room" and "orb" in item_query:
+                user_state['location'] = "nexus"
+                return Response(text="It's a trap! You've been teleported back to the nexus."
+            )
+        elif (verb == "touch"):
+            if locstring == "trap_room" and "orb" in item_query:
+                user_state['location'] = "nexus"
+                return Response(text="It's a trap! You've been teleported back to the nexus."
+            )
+            elif locstring == "nexus" and ("altar" in item_query or "spire" in item_query):
+                if all(locstate["altar"]):
+                    user_state['location'] = "secret_chamber"
+                    user_state["visited_locations"].add("secret_chamber")
+                    return Response(text="You've discovered the sarcophagus of the Nameless King. The air here is cold, and the walls are lined with skeletal remains fused with twisted metal.\n" +
+                    "At the center lies a broken, bone-carved throne, shrouded in faint bioluminescent vines. Perhaps it is waiting for the return of its master. The only way back leads to the central nexus."
+                ) 
+                else:
+                    return Response(text="The altar does not respond, perhaps it awaits more offerings.") 
         
         found_item = None
 
@@ -847,6 +934,33 @@ async def handle_command(req: Request) -> Response:
             # Check if verb exists for item
             if verb in found_item["verb"]:
                 return Response(text=found_item["verb"][verb])  # For any other command
+    elif len(command) == 3:
+        verb = command[0]
+        #print(command)
+        item = command[1]
+        value = command[2]
+        locstring = user_state['location']
+        locstate = user_domain_state['locations'][locstring]
+        if (verb == "use" or verb == "touch"):
+            if locstring == "puzzle_chamber_0" and "symbioticlock" in item:
+                if value == "89":
+                    user_domain_state['locations']['nexus']['gate1'] = True
+                    return Response(text="The lock pulses, the code seems to have been accepted.")
+                else:
+                    return Response(text="The code is incorrect, try again.")
+            elif locstring == "puzzle_chamber_1" and "symbioticlock" in item:
+                if value == "21185":
+                    user_domain_state['locations']['lore_room']['gate2'] = True
+                    return Response(text="The lock pulses, the code seems to have been accepted.")
+                else:
+                    return Response(text="The code is incorrect, try again.")
+            elif locstring == "puzzle_chamber_3" and "symbioticlock" in item:
+                if value == "303625":
+                    user_domain_state['locations']['puzzle_chamber_2']['gate3'] = True
+                    return Response(text="The lock pulses, the code seems to have been accepted.")
+                else:
+                    return Response(text="The code is incorrect, try again.")
+        
     return Response(text="I don't know how to do that.")
 
 
