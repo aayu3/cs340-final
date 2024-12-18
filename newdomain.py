@@ -77,7 +77,7 @@ base_domain_state = {
         "puzzle_chamber_2": {
             "items_id": [],  # ItemIDs for the items located here
             "items_name": [],
-            "exits": {"backwards": "lore_room", "back" : "lore_room"},
+            "exits": {"backwards": "lore_room", "back" : "lore_room", "forward": "treasure_room","forwards": "treasure_room"},
             "gate3": False,
             "suspensionbeams": False,
             "symbioticlock": False,
@@ -86,7 +86,7 @@ base_domain_state = {
         "treasure_room": {
             "items_id": [],  # ItemIDs for the items located here
             "items_name": [],
-            "exits": {"backwards": "puzzle_chamber_3"},
+            "exits": {"backwards": "puzzle_chamber_2", "back": "puzzle_chamber_2"},
             "vault": False,
             "sampleanalyzer": False,
         },
@@ -210,7 +210,7 @@ async def register_with_hub_server(req: Request) -> Response:
     item_locations = {"tissuesample":"puzzle_chamber_2",
         "metalcranium":"other", #other
         "biomecheyel":"other",
-        "biomecheyer":"puzzle_chamber_1",
+        "biomecheyer":"lore_room",
         "biomechpalml":"other",
         "biomechpalmr":"puzzle_chamber_0",
         "biomechtablet0":"nexus",
@@ -884,7 +884,7 @@ async def handle_command(req: Request) -> Response:
 
                     # Call transfer endpoint
                     async with req.app.client.post(
-                        base_domain_info["hub_url"] + "/transfer", json=transfer_data
+                        base_domain_info["hub_url"] + "/score", json=transfer_data
                     ) as resp:
                         info = await resp.json()
                     return Response(text= "The sample analyzer flashes green. You hear the vault click in the background.")
@@ -954,7 +954,7 @@ async def handle_command(req: Request) -> Response:
                     return Response(text="The lock pulses, the code seems to have been accepted.")
                 else:
                     return Response(text="The code is incorrect, try again.")
-            elif locstring == "puzzle_chamber_3" and "symbioticlock" in item:
+            elif locstring == "puzzle_chamber_2" and "symbioticlock" in item:
                 if value == "303625":
                     user_domain_state['locations']['puzzle_chamber_2']['gate3'] = True
                     return Response(text="The lock pulses, the code seems to have been accepted.")
